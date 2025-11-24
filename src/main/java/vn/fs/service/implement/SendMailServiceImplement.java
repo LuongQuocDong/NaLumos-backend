@@ -15,11 +15,13 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import vn.fs.dto.MailInfo;
 import vn.fs.service.SendMailService;
@@ -30,6 +32,12 @@ public class SendMailServiceImplement implements SendMailService {
 	@Autowired
 	JavaMailSender sender;
 
+	@Value("${spring.mail.username}")
+	private String senderEmail;
+
+	@Value("${app.mail.sender-name:NaLumos Shop}")
+	private String senderName;
+
 	List<MailInfo> list = new ArrayList<>();
 
 	@Override
@@ -38,11 +46,15 @@ public class SendMailServiceImplement implements SendMailService {
 		MimeMessage message = sender.createMimeMessage();
 		// Sử dụng Helper để thiết lập các thông tin cần thiết cho message
 		MimeMessageHelper helper = new MimeMessageHelper(message, true, "utf-8");
-		helper.setFrom(mail.getFrom());
+		String fromAddress = mail.getFrom();
+		if (!StringUtils.hasText(fromAddress)) {
+			fromAddress = String.format("%s <%s>", senderName, senderEmail);
+		}
+		helper.setFrom(fromAddress);
 		helper.setTo(mail.getTo());
 		helper.setSubject(mail.getSubject());
 		helper.setText(mail.getBody(), true);
-		helper.setReplyTo(mail.getFrom());
+		helper.setReplyTo(fromAddress);
 
 		if (mail.getAttachments() != null) {
 			FileSystemResource file = new FileSystemResource(new File(mail.getAttachments()));

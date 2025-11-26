@@ -95,7 +95,29 @@ public class MomoPaymentController {
 			HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(payload), headers);
 
 			ResponseEntity<String> momoResponse = restTemplate.postForEntity(momoApiUrl, entity, String.class);
-			return ResponseEntity.status(momoResponse.getStatusCode()).body(objectMapper.readTree(momoResponse.getBody()));
+			if (!momoResponse.getStatusCode().is2xxSuccessful() || momoResponse.getBody() == null) {
+				LOGGER.error("MoMo API call failed: status={}, body={}", momoResponse.getStatusCode(),
+						momoResponse.getBody());
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Collections.singletonMap("message",
+						"Hệ thống MoMo đang bận, vui lòng thử lại sau (không nhận được phản hồi)."));
+			}
+
+			var momoBody = objectMapper.readTree(momoResponse.getBody());
+			LOGGER.info("MoMo response: {}", momoBody);
+			if (!momoBody.hasNonNull("payUrl")) {
+				Map<String, Object> errorPayload = new HashMap<>();
+				errorPayload.put("message",
+						momoBody.hasNonNull("message") ? momoBody.get("message").asText()
+								: "Không nhận được liên kết thanh toán MoMo");
+				if (momoBody.has("localMessage")) {
+					errorPayload.put("localMessage", momoBody.get("localMessage").asText());
+				}
+				if (momoBody.has("errorCode")) {
+					errorPayload.put("errorCode", momoBody.get("errorCode").asText());
+				}
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorPayload);
+			}
+			return ResponseEntity.ok(momoBody);
 		} catch (Exception ex) {
 			LOGGER.error("Cannot create MoMo payment", ex);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(

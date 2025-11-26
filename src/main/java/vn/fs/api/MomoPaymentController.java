@@ -153,7 +153,7 @@ public class MomoPaymentController {
 		byte[] hmacData = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
 		StringBuilder sb = new StringBuilder(2 * hmacData.length);
 		for (byte b : hmacData) {
-			sb.append(String.format("%02x", b));
+			sb.append(String.format("%02X", b));
 		}
 		return sb.toString();
 	}

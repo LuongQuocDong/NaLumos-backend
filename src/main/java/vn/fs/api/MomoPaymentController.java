@@ -74,7 +74,7 @@ public class MomoPaymentController {
 			String extraData = request.getExtraData() != null ? request.getExtraData() : "";
 
 			String rawSignature = buildRawSignature(accessKey, amount, extraData, requestId, orderId, orderInfo,
-					returnUrl, notifyUrl, partnerCode);
+					returnUrl, notifyUrl, partnerCode, requestType);
 			String signature = signHmacSHA256(rawSignature, secretKey);
 
 			Map<String, Object> payload = new HashMap<>();
@@ -135,10 +135,10 @@ public class MomoPaymentController {
 	}
 
 	private String buildRawSignature(String accessKey, String amount, String extraData, String requestId, String orderId,
-			String orderInfo, String returnUrl, String notifyUrl, String partnerCode) {
+			String orderInfo, String returnUrl, String notifyUrl, String partnerCode, String requestType) {
 		return "partnerCode=" + partnerCode + "&accessKey=" + accessKey + "&requestId=" + requestId + "&amount="
-				+ amount + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&returnUrl=" + returnUrl
-				+ "&notifyUrl=" + notifyUrl + "&extraData=" + extraData;
+				+ amount + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&returnUrl=" + returnUrl + "&notifyUrl="
+				+ notifyUrl + "&extraData=" + extraData + "&requestType=" + requestType;
 	}
 
 	private String signHmacSHA256(String data, String key) throws Exception {

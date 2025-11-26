@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import vn.fs.dto.MomoPaymentRequest;
@@ -102,7 +103,7 @@ public class MomoPaymentController {
 						"Hệ thống MoMo đang bận, vui lòng thử lại sau (không nhận được phản hồi)."));
 			}
 
-			var momoBody = objectMapper.readTree(momoResponse.getBody());
+			JsonNode momoBody = objectMapper.readTree(momoResponse.getBody());
 			LOGGER.info("MoMo response: {}", momoBody);
 			if (!momoBody.hasNonNull("payUrl")) {
 				Map<String, Object> errorPayload = new HashMap<>();

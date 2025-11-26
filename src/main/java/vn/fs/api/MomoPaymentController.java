@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -125,6 +126,16 @@ public class MomoPaymentController {
 				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorPayload);
 			}
 			return ResponseEntity.ok(momoBody);
+		} catch (HttpStatusCodeException httpEx) {
+			LOGGER.error("MoMo API error: status={}, body={}", httpEx.getStatusCode(),
+					httpEx.getResponseBodyAsString(), httpEx);
+			try {
+				JsonNode errorBody = objectMapper.readTree(httpEx.getResponseBodyAsString());
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody);
+			} catch (Exception parseEx) {
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Collections.singletonMap("message",
+						"MoMo trả về lỗi: " + httpEx.getStatusText()));
+			}
 		} catch (Exception ex) {
 			LOGGER.error("Cannot create MoMo payment", ex);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(

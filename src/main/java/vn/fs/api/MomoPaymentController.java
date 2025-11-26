@@ -77,6 +77,7 @@ public class MomoPaymentController {
 			String rawSignature = buildRawSignature(accessKey, amount, extraData, requestId, orderId, orderInfo,
 					returnUrl, notifyUrl, partnerCode);
 			String signature = signHmacSHA256(rawSignature, secretKey);
+			LOGGER.info("MoMo raw data: {}", rawSignature);
 
 			Map<String, Object> payload = new HashMap<>();
 			payload.put("partnerCode", partnerCode);
@@ -90,6 +91,7 @@ public class MomoPaymentController {
 			payload.put("extraData", extraData);
 			payload.put("requestType", requestType);
 			payload.put("signature", signature);
+			LOGGER.info("MoMo payload: {}", payload);
 
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
@@ -116,6 +118,8 @@ public class MomoPaymentController {
 				if (momoBody.has("errorCode")) {
 					errorPayload.put("errorCode", momoBody.get("errorCode").asText());
 				}
+				errorPayload.put("rawSignature", rawSignature);
+				errorPayload.put("signature", signature);
 				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorPayload);
 			}
 			return ResponseEntity.ok(momoBody);

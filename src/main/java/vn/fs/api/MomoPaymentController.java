@@ -78,6 +78,7 @@ public class MomoPaymentController {
 					returnUrl, notifyUrl, partnerCode);
 			String signature = signHmacSHA256(rawSignature, secretKey);
 			LOGGER.info("MoMo raw data: {}", rawSignature);
+			LOGGER.info("MoMo secret length: {}", secretKey != null ? secretKey.length() : null);
 
 			Map<String, Object> payload = new HashMap<>();
 			payload.put("partnerCode", partnerCode);
@@ -91,6 +92,7 @@ public class MomoPaymentController {
 			payload.put("extraData", extraData);
 			payload.put("requestType", requestType);
 			payload.put("signature", signature);
+			payload.put("orderExpireTime", String.valueOf(System.currentTimeMillis() + 5 * 60 * 1000));
 			LOGGER.info("MoMo payload: {}", payload);
 
 			HttpHeaders headers = new HttpHeaders();

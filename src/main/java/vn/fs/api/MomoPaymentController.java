@@ -75,7 +75,7 @@ public class MomoPaymentController {
 			String extraData = request.getExtraData() != null ? request.getExtraData() : "";
 
 			String rawSignature = buildRawSignature(accessKey, amount, extraData, requestId, orderId, orderInfo,
-					returnUrl, notifyUrl, partnerCode);
+					returnUrl, notifyUrl, partnerCode, requestType);
 			String signature = signHmacSHA256(rawSignature, secretKey);
 			LOGGER.info("MoMo raw data: {}", rawSignature);
 			LOGGER.info("MoMo secret length: {}", secretKey != null ? secretKey.length() : null);
@@ -87,12 +87,12 @@ public class MomoPaymentController {
 			payload.put("amount", amount);
 			payload.put("orderId", orderId);
 			payload.put("orderInfo", orderInfo);
-			payload.put("returnUrl", returnUrl);
-			payload.put("notifyUrl", notifyUrl);
+			payload.put("redirectUrl", returnUrl);
+			payload.put("ipnUrl", notifyUrl);
 			payload.put("extraData", extraData);
 			payload.put("requestType", requestType);
 			payload.put("signature", signature);
-			payload.put("orderExpireTime", String.valueOf(System.currentTimeMillis() + 5 * 60 * 1000));
+			payload.put("lang", "vi");
 			LOGGER.info("MoMo payload: {}", payload);
 
 			HttpHeaders headers = new HttpHeaders();
@@ -142,10 +142,10 @@ public class MomoPaymentController {
 	}
 
 	private String buildRawSignature(String accessKey, String amount, String extraData, String requestId, String orderId,
-			String orderInfo, String returnUrl, String notifyUrl, String partnerCode) {
-		return "partnerCode=" + partnerCode + "&accessKey=" + accessKey + "&requestId=" + requestId + "&amount="
-				+ amount + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&returnUrl=" + returnUrl + "&notifyUrl="
-				+ notifyUrl + "&extraData=" + extraData;
+			String orderInfo, String returnUrl, String notifyUrl, String partnerCode, String requestType) {
+		return "accessKey=" + accessKey + "&amount=" + amount + "&extraData=" + extraData + "&ipnUrl=" + notifyUrl
+				+ "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&partnerCode=" + partnerCode + "&redirectUrl="
+				+ returnUrl + "&requestId=" + requestId + "&requestType=" + requestType;
 	}
 
 	private String signHmacSHA256(String data, String key) throws Exception {

@@ -74,9 +74,14 @@ public class SendMailServiceImplement implements SendMailService {
 		}
 
 		// Gửi message đến SMTP server
-		LOGGER.info("Sending email to: {}", mail.getTo());
-		sender.send(message);
-		LOGGER.info("Email sent successfully to: {}", mail.getTo());
+		LOGGER.info("Sending email to: {}, from: {}", mail.getTo(), fromAddress);
+		try {
+			sender.send(message);
+			LOGGER.info("Email sent successfully to: {}", mail.getTo());
+		} catch (Exception e) {
+			LOGGER.error("Exception while sending email to {}: {}", mail.getTo(), e.getMessage(), e);
+			throw e;
+		}
 	}
 
 	@Override

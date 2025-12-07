@@ -6,6 +6,8 @@
 */
 package vn.fs.api;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import vn.fs.repository.UserRepository;
 import vn.fs.service.SendMailService;
@@ -32,23 +36,65 @@ public class SendMailApi {
 	@Autowired
 	UserRepository Urepo;
 
+	@Autowired
+	ObjectMapper objectMapper;
+
 	@PostMapping("/otp")
-	public ResponseEntity<?> sendOpt(@RequestBody String email) {
+	public ResponseEntity<?> sendOpt(@RequestBody Object request) {
+		String email = null;
 		try {
-			if (email == null || email.trim().isEmpty()) {
-				LOGGER.error("Email is null or empty");
+			// Handle both JSON object and plain string
+			if (request instanceof String) {
+				// Plain string - remove quotes if present
+				email = ((String) request).replaceAll("^\"|\"$", "").trim();
+			} else if (request instanceof Map) {
+				// JSON object
+				@SuppressWarnings("unchecked")
+				Map<String, Object> map = (Map<String, Object>) request;
+				if (map.containsKey("email")) {
+					email = map.get("email").toString().trim();
+				} else {
+					LOGGER.error("Email field not found in request body");
+					return ResponseEntity.badRequest().body("Email không được tìm thấy trong request");
+				}
+			} else {
+				// Try to parse as JSON string
+				String requestStr = request.toString();
+				if (requestStr.startsWith("{") || requestStr.startsWith("\"")) {
+					try {
+						@SuppressWarnings("unchecked")
+						Map<String, Object> map = objectMapper.readValue(requestStr, Map.class);
+						if (map.containsKey("email")) {
+							email = map.get("email").toString().trim();
+						}
+					} catch (Exception e) {
+						email = requestStr.replaceAll("^\"|\"$", "").trim();
+					}
+				} else {
+					email = requestStr.trim();
+				}
+			}
+
+			if (email == null || email.isEmpty()) {
+				LOGGER.error("Email is null or empty after parsing");
 				return ResponseEntity.badRequest().body("Email không được để trống");
 			}
-			
+
 			LOGGER.info("Attempting to send OTP to email: {}", email);
-			
+
+			// Validate email format
+			if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+				LOGGER.error("Invalid email format: {}", email);
+				return ResponseEntity.badRequest().body("Email không hợp lệ");
+			}
+
 			int random_otp = (int) Math.floor(Math.random() * (999999 - 100000 + 1) + 100000);
-			
+
 			if (Urepo.existsByEmail(email)) {
 				LOGGER.warn("Email already exists: {}", email);
 				return ResponseEntity.badRequest().body("Email đã được sử dụng");
 			}
-			
+
 			sendMailOtp(email, random_otp, "Xác nhận tài khoản!");
 			LOGGER.info("OTP queued for email: {}, OTP: {}", email, random_otp);
 			return ResponseEntity.ok(random_otp);

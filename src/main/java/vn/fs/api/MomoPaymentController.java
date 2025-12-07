@@ -62,31 +62,39 @@ public class MomoPaymentController {
 	private String requestType;
 
 	@PostMapping("/create")
-	public ResponseEntity<?> createPayment(@RequestBody MomoPaymentRequest request) {
-		LOGGER.info("Received MoMo payment request: amount={}, orderInfo={}", 
-				request.getAmount(), request.getOrderInfo());
-		
-		// Validate request
-		if (request.getAmount() == null || request.getAmount() <= 0) {
-			LOGGER.error("Invalid amount: {}", request.getAmount());
-			return ResponseEntity.badRequest()
-					.body(Collections.singletonMap("message", "Số tiền phải lớn hơn 0"));
-		}
-
-		// Validate configuration
-		if (partnerCode == null || partnerCode.isEmpty()) {
-			LOGGER.error("MoMo partnerCode is not configured");
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Collections.singletonMap("message", "Cấu hình MoMo chưa đầy đủ"));
-		}
-		
-		if (accessKey == null || accessKey.isEmpty() || secretKey == null || secretKey.isEmpty()) {
-			LOGGER.error("MoMo accessKey or secretKey is not configured");
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Collections.singletonMap("message", "Cấu hình MoMo chưa đầy đủ"));
-		}
-
+	public ResponseEntity<?> createPayment(@RequestBody(required = false) MomoPaymentRequest request) {
 		try {
+			LOGGER.info("Received MoMo payment request");
+			
+			// Validate request is not null
+			if (request == null) {
+				LOGGER.error("MoMo payment request is null");
+				return ResponseEntity.badRequest()
+						.body(Collections.singletonMap("message", "Request không được để trống"));
+			}
+			
+			LOGGER.info("MoMo payment request: amount={}, orderInfo={}", 
+					request.getAmount(), request.getOrderInfo());
+			
+			// Validate request
+			if (request.getAmount() == null || request.getAmount() <= 0) {
+				LOGGER.error("Invalid amount: {}", request.getAmount());
+				return ResponseEntity.badRequest()
+						.body(Collections.singletonMap("message", "Số tiền phải lớn hơn 0"));
+			}
+
+			// Validate configuration
+			if (partnerCode == null || partnerCode.isEmpty()) {
+				LOGGER.error("MoMo partnerCode is not configured");
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+						.body(Collections.singletonMap("message", "Cấu hình MoMo chưa đầy đủ"));
+			}
+			
+			if (accessKey == null || accessKey.isEmpty() || secretKey == null || secretKey.isEmpty()) {
+				LOGGER.error("MoMo accessKey or secretKey is not configured");
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+						.body(Collections.singletonMap("message", "Cấu hình MoMo chưa đầy đủ"));
+			}
 			String orderId = UUID.randomUUID().toString();
 			String requestId = UUID.randomUUID().toString();
 			String amount = String.valueOf(request.getAmount());
@@ -95,7 +103,14 @@ public class MomoPaymentController {
 
 			String rawSignature = buildRawSignature(accessKey, amount, extraData, requestId, orderId, orderInfo,
 					returnUrl, notifyUrl, partnerCode, requestType);
-			String signature = signHmacSHA256(rawSignature, secretKey);
+			String signature;
+			try {
+				signature = signHmacSHA256(rawSignature, secretKey);
+			} catch (Exception sigEx) {
+				LOGGER.error("Failed to generate signature", sigEx);
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+						.body(Collections.singletonMap("message", "Lỗi tạo chữ ký: " + sigEx.getMessage()));
+			}
 			LOGGER.info("MoMo raw signature: {}", rawSignature);
 			LOGGER.info("MoMo signature: {}", signature);
 			LOGGER.info("MoMo API URL: {}", momoApiUrl);
@@ -181,8 +196,13 @@ public class MomoPaymentController {
 		} catch (Exception ex) {
 			LOGGER.error("Unexpected error creating MoMo payment", ex);
 			ex.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-					Collections.singletonMap("message", "Không thể tạo yêu cầu thanh toán MoMo: " + ex.getMessage()));
+			Map<String, Object> errorResponse = new HashMap<>();
+			errorResponse.put("message", "Không thể tạo yêu cầu thanh toán MoMo: " + ex.getMessage());
+			errorResponse.put("error", ex.getClass().getSimpleName());
+			if (ex.getCause() != null) {
+				errorResponse.put("cause", ex.getCause().getMessage());
+			}
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
 		}
 	}
 

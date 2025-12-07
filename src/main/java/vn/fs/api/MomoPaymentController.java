@@ -63,23 +63,42 @@ public class MomoPaymentController {
 
 	@PostMapping("/create")
 	public ResponseEntity<?> createPayment(@RequestBody MomoPaymentRequest request) {
+		LOGGER.info("Received MoMo payment request: amount={}, orderInfo={}", 
+				request.getAmount(), request.getOrderInfo());
+		
+		// Validate request
 		if (request.getAmount() == null || request.getAmount() <= 0) {
+			LOGGER.error("Invalid amount: {}", request.getAmount());
 			return ResponseEntity.badRequest()
-					.body(Collections.singletonMap("message", "Amount must be greater than 0"));
+					.body(Collections.singletonMap("message", "Số tiền phải lớn hơn 0"));
+		}
+
+		// Validate configuration
+		if (partnerCode == null || partnerCode.isEmpty()) {
+			LOGGER.error("MoMo partnerCode is not configured");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Collections.singletonMap("message", "Cấu hình MoMo chưa đầy đủ"));
+		}
+		
+		if (accessKey == null || accessKey.isEmpty() || secretKey == null || secretKey.isEmpty()) {
+			LOGGER.error("MoMo accessKey or secretKey is not configured");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Collections.singletonMap("message", "Cấu hình MoMo chưa đầy đủ"));
 		}
 
 		try {
 			String orderId = UUID.randomUUID().toString();
 			String requestId = UUID.randomUUID().toString();
 			String amount = String.valueOf(request.getAmount());
-			String orderInfo = request.getOrderInfo() != null ? request.getOrderInfo() : "MoMo payment";
+			String orderInfo = request.getOrderInfo() != null ? request.getOrderInfo() : "Thanh toán MoMo";
 			String extraData = request.getExtraData() != null ? request.getExtraData() : "";
 
 			String rawSignature = buildRawSignature(accessKey, amount, extraData, requestId, orderId, orderInfo,
 					returnUrl, notifyUrl, partnerCode, requestType);
 			String signature = signHmacSHA256(rawSignature, secretKey);
-			LOGGER.info("MoMo raw data: {}", rawSignature);
-			LOGGER.info("MoMo secret length: {}", secretKey != null ? secretKey.length() : null);
+			LOGGER.info("MoMo raw signature: {}", rawSignature);
+			LOGGER.info("MoMo signature: {}", signature);
+			LOGGER.info("MoMo API URL: {}", momoApiUrl);
 
 			Map<String, Object> payload = new HashMap<>();
 			payload.put("partnerCode", partnerCode);
@@ -94,13 +113,20 @@ public class MomoPaymentController {
 			payload.put("requestType", requestType);
 			payload.put("signature", signature);
 			payload.put("lang", "vi");
-			LOGGER.info("MoMo payload: {}", payload);
+			LOGGER.info("MoMo request payload: {}", payload);
 
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
-			HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(payload), headers);
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+			String jsonPayload = objectMapper.writeValueAsString(payload);
+			LOGGER.info("MoMo request JSON: {}", jsonPayload);
+			HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
 
+			LOGGER.info("Sending request to MoMo API: {}", momoApiUrl);
 			ResponseEntity<String> momoResponse = restTemplate.postForEntity(momoApiUrl, entity, String.class);
+			LOGGER.info("MoMo API response status: {}", momoResponse.getStatusCode());
+			LOGGER.info("MoMo API response body: {}", momoResponse.getBody());
+			
 			if (!momoResponse.getStatusCode().is2xxSuccessful() || momoResponse.getBody() == null) {
 				LOGGER.error("MoMo API call failed: status={}, body={}", momoResponse.getStatusCode(),
 						momoResponse.getBody());
@@ -109,37 +135,54 @@ public class MomoPaymentController {
 			}
 
 			JsonNode momoBody = objectMapper.readTree(momoResponse.getBody());
-			LOGGER.info("MoMo response: {}", momoBody);
+			LOGGER.info("MoMo response parsed: {}", momoBody);
+			
 			if (!momoBody.hasNonNull("payUrl")) {
 				Map<String, Object> errorPayload = new HashMap<>();
-				errorPayload.put("message",
-						momoBody.hasNonNull("message") ? momoBody.get("message").asText()
-								: "Không nhận được liên kết thanh toán MoMo");
+				String errorMessage = momoBody.hasNonNull("message") ? momoBody.get("message").asText()
+						: "Không nhận được liên kết thanh toán MoMo";
+				errorPayload.put("message", errorMessage);
+				LOGGER.error("MoMo payment creation failed: {}", errorMessage);
+				
 				if (momoBody.has("localMessage")) {
 					errorPayload.put("localMessage", momoBody.get("localMessage").asText());
+					LOGGER.error("MoMo localMessage: {}", momoBody.get("localMessage").asText());
 				}
 				if (momoBody.has("errorCode")) {
 					errorPayload.put("errorCode", momoBody.get("errorCode").asText());
+					LOGGER.error("MoMo errorCode: {}", momoBody.get("errorCode").asText());
+				}
+				if (momoBody.has("resultCode")) {
+					errorPayload.put("resultCode", momoBody.get("resultCode").asText());
+					LOGGER.error("MoMo resultCode: {}", momoBody.get("resultCode").asText());
 				}
 				errorPayload.put("rawSignature", rawSignature);
 				errorPayload.put("signature", signature);
 				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorPayload);
 			}
+			
+			LOGGER.info("MoMo payment URL created successfully: {}", momoBody.get("payUrl").asText());
 			return ResponseEntity.ok(momoBody);
 		} catch (HttpStatusCodeException httpEx) {
-			LOGGER.error("MoMo API error: status={}, body={}", httpEx.getStatusCode(),
+			LOGGER.error("MoMo API HTTP error: status={}, body={}", httpEx.getStatusCode(),
 					httpEx.getResponseBodyAsString(), httpEx);
 			try {
 				JsonNode errorBody = objectMapper.readTree(httpEx.getResponseBodyAsString());
+				LOGGER.error("MoMo error response: {}", errorBody);
 				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorBody);
 			} catch (Exception parseEx) {
-				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Collections.singletonMap("message",
-						"MoMo trả về lỗi: " + httpEx.getStatusText()));
+				LOGGER.error("Failed to parse MoMo error response", parseEx);
+				Map<String, Object> errorResponse = new HashMap<>();
+				errorResponse.put("message", "MoMo trả về lỗi: " + httpEx.getStatusText());
+				errorResponse.put("statusCode", httpEx.getStatusCode().value());
+				errorResponse.put("responseBody", httpEx.getResponseBodyAsString());
+				return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errorResponse);
 			}
 		} catch (Exception ex) {
-			LOGGER.error("Cannot create MoMo payment", ex);
+			LOGGER.error("Unexpected error creating MoMo payment", ex);
+			ex.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-					Collections.singletonMap("message", "Không thể tạo yêu cầu thanh toán MoMo lúc này."));
+					Collections.singletonMap("message", "Không thể tạo yêu cầu thanh toán MoMo: " + ex.getMessage()));
 		}
 	}
 

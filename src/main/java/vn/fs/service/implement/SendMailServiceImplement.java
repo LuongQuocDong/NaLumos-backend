@@ -14,6 +14,8 @@ import java.util.List;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -29,6 +31,8 @@ import vn.fs.service.SendMailService;
 @Service
 public class SendMailServiceImplement implements SendMailService {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(SendMailServiceImplement.class);
+
 	@Autowired
 	JavaMailSender sender;
 
@@ -42,6 +46,14 @@ public class SendMailServiceImplement implements SendMailService {
 
 	@Override
 	public void send(MailInfo mail) throws MessagingException, IOException {
+		LOGGER.info("Preparing to send email to: {}, subject: {}", mail.getTo(), mail.getSubject());
+		
+		// Validate email configuration
+		if (senderEmail == null || senderEmail.isEmpty()) {
+			LOGGER.error("Sender email is not configured");
+			throw new MessagingException("Email sender is not configured");
+		}
+		
 		// Tạo message
 		MimeMessage message = sender.createMimeMessage();
 		// Sử dụng Helper để thiết lập các thông tin cần thiết cho message
@@ -62,31 +74,48 @@ public class SendMailServiceImplement implements SendMailService {
 		}
 
 		// Gửi message đến SMTP server
+		LOGGER.info("Sending email to: {}", mail.getTo());
 		sender.send(message);
-
+		LOGGER.info("Email sent successfully to: {}", mail.getTo());
 	}
 
 	@Override
 	public void queue(MailInfo mail) {
+		LOGGER.info("Queueing email to: {}, subject: {}", mail.getTo(), mail.getSubject());
 		list.add(mail);
+		LOGGER.info("Email queued. Queue size: {}", list.size());
 	}
 
 	@Override
 	public void queue(String to, String subject, String body) {
+		LOGGER.info("Queueing email to: {}, subject: {}", to, subject);
 		queue(new MailInfo(to, subject, body));
 	}
 
 	@Override
 	@Scheduled(fixedDelay = 5000)
 	public void run() {
+		if (list.isEmpty()) {
+			return;
+		}
+		
+		LOGGER.info("Processing email queue. Size: {}", list.size());
 		while (!list.isEmpty()) {
 			MailInfo mail = list.remove(0);
 			try {
 				this.send(mail);
+				LOGGER.info("Email sent successfully to: {}", mail.getTo());
+			} catch (MessagingException e) {
+				LOGGER.error("Failed to send email to {}: {}", mail.getTo(), e.getMessage(), e);
+				// Re-queue the email for retry (optional - you might want to limit retries)
+				// list.add(mail);
+			} catch (IOException e) {
+				LOGGER.error("IO error sending email to {}: {}", mail.getTo(), e.getMessage(), e);
 			} catch (Exception e) {
-				e.printStackTrace();
+				LOGGER.error("Unexpected error sending email to {}: {}", mail.getTo(), e.getMessage(), e);
 			}
 		}
+		LOGGER.info("Email queue processing completed");
 	}
 
 }

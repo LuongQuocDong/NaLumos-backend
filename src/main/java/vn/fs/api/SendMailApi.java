@@ -168,6 +168,21 @@ public class SendMailApi {
 	// Test endpoint to check email configuration
 	@GetMapping("/test")
 	public ResponseEntity<?> testEmail(@RequestParam(required = false) String email) {
+		return testEmailInternal(email);
+	}
+	
+	// Also allow GET on /otp for testing (will return info message)
+	@GetMapping("/otp")
+	public ResponseEntity<?> getOtpInfo(@RequestParam(required = false) String email) {
+		if (email != null && !email.isEmpty()) {
+			// If email provided, try to send test OTP
+			LOGGER.info("GET request to /otp with email: {}", email);
+			return testEmailInternal(email);
+		}
+		return ResponseEntity.ok("OTP endpoint - Use POST method with JSON body: {\"email\": \"your-email@example.com\"}");
+	}
+	
+	private ResponseEntity<?> testEmailInternal(String email) {
 		try {
 			LOGGER.info("Testing email configuration...");
 			

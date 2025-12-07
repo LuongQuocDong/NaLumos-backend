@@ -30,9 +30,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import vn.fs.dto.MomoPaymentRequest;
 
-@CrossOrigin("*")
-@RestController
-@RequestMapping("api/payments/momo")
+// Disabled - Đã chuyển sang VNPAY
+// @CrossOrigin("*")
+// @RestController
+// @RequestMapping("api/payments/momo")
 public class MomoPaymentController {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(MomoPaymentController.class);

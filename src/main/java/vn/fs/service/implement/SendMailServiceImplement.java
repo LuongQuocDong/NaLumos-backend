@@ -35,6 +35,9 @@ public class SendMailServiceImplement implements SendMailService {
 
 	@Autowired
 	JavaMailSender sender;
+	
+	@Autowired(required = false)
+	SendGridEmailService sendGridEmailService;
 
 	@Value("${spring.mail.username}")
 	private String senderEmail;
@@ -73,13 +76,23 @@ public class SendMailServiceImplement implements SendMailService {
 			helper.addAttachment(mail.getAttachments(), file);
 		}
 
-		// Gửi message đến SMTP server
-		LOGGER.info("Sending email to: {}, from: {}", mail.getTo(), fromAddress);
+		// Try SendGrid first if available (works better on Railway)
+		if (sendGridEmailService != null) {
+			LOGGER.info("Attempting to send email via SendGrid to: {}", mail.getTo());
+			if (sendGridEmailService.sendEmail(mail)) {
+				LOGGER.info("Email sent successfully via SendGrid to: {}", mail.getTo());
+				return;
+			}
+			LOGGER.warn("SendGrid failed, falling back to SMTP");
+		}
+		
+		// Fallback to SMTP
+		LOGGER.info("Sending email via SMTP to: {}, from: {}", mail.getTo(), fromAddress);
 		try {
 			sender.send(message);
-			LOGGER.info("Email sent successfully to: {}", mail.getTo());
+			LOGGER.info("Email sent successfully via SMTP to: {}", mail.getTo());
 		} catch (Exception e) {
-			LOGGER.error("Exception while sending email to {}: {}", mail.getTo(), e.getMessage(), e);
+			LOGGER.error("Exception while sending email via SMTP to {}: {}", mail.getTo(), e.getMessage(), e);
 			throw e;
 		}
 	}

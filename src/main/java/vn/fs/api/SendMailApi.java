@@ -125,12 +125,34 @@ public class SendMailApi {
 	// sendmail
 	public void sendMailOtp(String email, int Otp, String title) {
 		try {
-			String body = "<div>\r\n" + "        <h3>Mã OTP của bạn là: <span style=\"color:red; font-weight: bold;\">"
-					+ Otp + "</span></h3>\r\n" + "    </div>";
-			sendMail.queue(email, title, body);
-			LOGGER.info("OTP email queued successfully for: {}", email);
+			String body = "<div style=\"font-family: Arial, sans-serif; padding: 20px;\">\r\n" 
+					+ "        <h2 style=\"color: #333;\">Xác nhận tài khoản NaLumos Shop</h2>\r\n"
+					+ "        <p>Xin chào,</p>\r\n"
+					+ "        <p>Mã OTP của bạn là: <span style=\"color:red; font-weight: bold; font-size: 24px;\">"
+					+ Otp + "</span></p>\r\n"
+					+ "        <p>Mã này có hiệu lực trong 10 phút.</p>\r\n"
+					+ "        <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>\r\n"
+					+ "        <p>Trân trọng,<br>NaLumos Shop</p>\r\n"
+					+ "    </div>";
+			
+			vn.fs.dto.MailInfo mailInfo = new vn.fs.dto.MailInfo(email, title, body);
+			
+			// Try to send immediately first, if fails then queue
+			try {
+				LOGGER.info("Attempting to send OTP email immediately to: {}", email);
+				sendMail.send(mailInfo);
+				LOGGER.info("OTP email sent immediately to: {}", email);
+			} catch (javax.mail.MessagingException | java.io.IOException immediateError) {
+				LOGGER.warn("Failed to send email immediately, queueing instead. Error: {}", immediateError.getMessage(), immediateError);
+				sendMail.queue(mailInfo);
+				LOGGER.info("OTP email queued for: {}", email);
+			} catch (Exception immediateError) {
+				LOGGER.warn("Unexpected error sending email immediately, queueing instead. Error: {}", immediateError.getMessage(), immediateError);
+				sendMail.queue(mailInfo);
+				LOGGER.info("OTP email queued for: {}", email);
+			}
 		} catch (Exception e) {
-			LOGGER.error("Failed to queue OTP email for: {}", email, e);
+			LOGGER.error("Failed to send/queue OTP email for: {}", email, e);
 			throw e;
 		}
 	}

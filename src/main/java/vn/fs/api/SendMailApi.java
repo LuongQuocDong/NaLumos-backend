@@ -40,8 +40,13 @@ public class SendMailApi {
 	@Autowired
 	ObjectMapper objectMapper;
 
-	@PostMapping(value = "/otp", consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.TEXT_PLAIN_VALUE, "application/json", "text/plain", "*/*" }, produces = MediaType.APPLICATION_JSON_VALUE)
+	@PostMapping(value = "/otp", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<?> sendOpt(@RequestBody(required = false) Object request) {
+		return sendOptInternal(request);
+	}
+	
+	// Internal method to handle OTP sending
+	private ResponseEntity<?> sendOptInternal(Object request) {
 		String email = null;
 		try {
 			LOGGER.info("Received OTP request, type: {}, value: {}", 

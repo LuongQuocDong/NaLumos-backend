@@ -29,23 +29,24 @@ import vn.fs.dto.VNPAYPaymentRequest;
 @CrossOrigin("*")
 @RestController
 @RequestMapping("api/payments/vnpay")
+// @ConditionalOnProperty(name = "vnpay.enabled", havingValue = "true", matchIfMissing = false)
 public class VNPAYPaymentController {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(VNPAYPaymentController.class);
 
-	@Value("${vnpay.tmn.code:}")
+	@Value("${vnpay.tmn.code:86HUISZB}")
 	private String tmnCode;
 
-	@Value("${vnpay.hash.secret:}")
+	@Value("${vnpay.hash.secret:EX5EKK1JU30NVFWZ0UPVHKDEKEPFE6XI}")
 	private String hashSecret;
 
 	@Value("${vnpay.url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
 	private String vnpUrl;
 
-	@Value("${vnpay.return.url:}")
+	@Value("${vnpay.return.url:https://nalumosshop-web-production.up.railway.app/checkout}")
 	private String returnUrl;
 
-	@Value("${vnpay.ipn.url:}")
+	@Value("${vnpay.ipn.url:https://nalumos-backend-production.up.railway.app/api/payments/vnpay/ipn}")
 	private String ipnUrl;
 
 	@PostMapping("/create")

@@ -74,6 +74,13 @@ public class VNPAYPaymentController {
 						.body(Collections.singletonMap("message", "Cấu hình VNPAY chưa đầy đủ"));
 			}
 
+			// Validate return URL
+			if (returnUrl == null || returnUrl.isEmpty()) {
+				LOGGER.error("VNPAY return URL is not configured");
+				return ResponseEntity.status(500)
+						.body(Collections.singletonMap("message", "Cấu hình VNPAY return URL chưa đầy đủ"));
+			}
+
 			// Create payment URL
 			String vnp_TxnRef = String.valueOf(System.currentTimeMillis());
 			String vnp_Amount = String.valueOf(request.getAmount() * 100); // VNPAY uses cents
@@ -107,9 +114,14 @@ public class VNPAYPaymentController {
 			Iterator<Map.Entry<String, String>> itr = sortedParams.entrySet().iterator();
 			while (itr.hasNext()) {
 				Map.Entry<String, String> entry = itr.next();
-				queryString.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8.toString()));
-				queryString.append('=');
-				queryString.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8.toString()));
+				try {
+					queryString.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8.toString()));
+					queryString.append('=');
+					queryString.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8.toString()));
+				} catch (Exception e) {
+					LOGGER.error("Error encoding URL parameter: {}", e.getMessage());
+					queryString.append(entry.getKey()).append('=').append(entry.getValue());
+				}
 				if (itr.hasNext()) {
 					queryString.append('&');
 				}

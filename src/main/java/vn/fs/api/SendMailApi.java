@@ -133,14 +133,23 @@ public class SendMailApi {
 	// sendmail
 	public void sendMailOtp(String email, int Otp, String title) {
 		try {
-			String body = "<div style=\"font-family: Arial, sans-serif; padding: 20px;\">\r\n" 
-					+ "        <h2 style=\"color: #333;\">Xác nhận tài khoản NaLumos Shop</h2>\r\n"
-					+ "        <p>Xin chào,</p>\r\n"
-					+ "        <p>Mã OTP của bạn là: <span style=\"color:red; font-weight: bold; font-size: 24px;\">"
-					+ Otp + "</span></p>\r\n"
-					+ "        <p>Mã này có hiệu lực trong 10 phút.</p>\r\n"
-					+ "        <p>Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>\r\n"
-					+ "        <p>Trân trọng,<br>NaLumos Shop</p>\r\n"
+			String logoUrl = "https://nalumosshop-web-production.up.railway.app/img/logo.png";
+			String body = "<div style=\"font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f9f9f9;\">\r\n"
+					+ "        <div style=\"text-align: center; margin-bottom: 30px;\">\r\n"
+					+ "            <img src=\"" + logoUrl + "\" alt=\"NaLumos Shop\" style=\"max-width: 200px; height: auto;\" />\r\n"
+					+ "        </div>\r\n"
+					+ "        <div style=\"background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\r\n"
+					+ "            <h2 style=\"color: #333; margin-top: 0;\">Xác nhận tài khoản NaLumos Shop</h2>\r\n"
+					+ "            <p style=\"color: #666; font-size: 16px;\">Xin chào,</p>\r\n"
+					+ "            <p style=\"color: #666; font-size: 16px;\">Mã OTP của bạn là:</p>\r\n"
+					+ "            <div style=\"text-align: center; margin: 30px 0; padding: 20px; background-color: #f5f5f5; border-radius: 5px;\">\r\n"
+					+ "                <span style=\"color: #e74c3c; font-weight: bold; font-size: 32px; letter-spacing: 5px;\">"
+					+ Otp + "</span>\r\n"
+					+ "            </div>\r\n"
+					+ "            <p style=\"color: #666; font-size: 14px;\">Mã này có hiệu lực trong 10 phút.</p>\r\n"
+					+ "            <p style=\"color: #999; font-size: 12px; margin-top: 30px;\">Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>\r\n"
+					+ "            <p style=\"color: #333; font-size: 16px; margin-top: 30px;\">Trân trọng,<br><strong>NaLumos Shop</strong></p>\r\n"
+					+ "        </div>\r\n"
 					+ "    </div>";
 			
 			vn.fs.dto.MailInfo mailInfo = new vn.fs.dto.MailInfo(email, title, body);

@@ -78,12 +78,15 @@ public class SendMailServiceImplement implements SendMailService {
 
 		// Try SendGrid first if available (works better on Railway)
 		if (sendGridEmailService != null) {
-			LOGGER.info("Attempting to send email via SendGrid to: {}", mail.getTo());
-			if (sendGridEmailService.sendEmail(mail)) {
+			LOGGER.info("SendGrid service is available, attempting to send email via SendGrid to: {}", mail.getTo());
+			boolean sendGridResult = sendGridEmailService.sendEmail(mail);
+			if (sendGridResult) {
 				LOGGER.info("Email sent successfully via SendGrid to: {}", mail.getTo());
 				return;
 			}
-			LOGGER.warn("SendGrid failed, falling back to SMTP");
+			LOGGER.warn("SendGrid failed or not enabled, falling back to SMTP");
+		} else {
+			LOGGER.warn("SendGrid service is not available, using SMTP only");
 		}
 		
 		// Fallback to SMTP

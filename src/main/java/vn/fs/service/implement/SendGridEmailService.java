@@ -42,8 +42,16 @@ public class SendGridEmailService {
 	private static final String SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 
 	public boolean sendEmail(MailInfo mail) {
-		if (!sendGridEnabled || sendGridApiKey == null || sendGridApiKey.isEmpty()) {
-			LOGGER.warn("SendGrid is not enabled or API key is missing");
+		LOGGER.info("SendGrid sendEmail called - enabled: {}, apiKey present: {}", 
+				sendGridEnabled, sendGridApiKey != null && !sendGridApiKey.isEmpty());
+		
+		if (!sendGridEnabled) {
+			LOGGER.warn("SendGrid is not enabled (sendgrid.enabled=false)");
+			return false;
+		}
+		
+		if (sendGridApiKey == null || sendGridApiKey.isEmpty()) {
+			LOGGER.error("SendGrid API key is missing. Please set SENDGRID_API_KEY environment variable in Railway");
 			return false;
 		}
 		

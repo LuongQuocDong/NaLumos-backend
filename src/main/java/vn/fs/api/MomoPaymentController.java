@@ -37,8 +37,18 @@ public class MomoPaymentController {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(MomoPaymentController.class);
 
-	private final RestTemplate restTemplate = new RestTemplate();
+	private final RestTemplate restTemplate;
 	private final ObjectMapper objectMapper = new ObjectMapper();
+	
+	public MomoPaymentController() {
+		this.restTemplate = new RestTemplate();
+		// Set timeout to prevent hanging requests
+		org.springframework.http.client.SimpleClientHttpRequestFactory factory = 
+				new org.springframework.http.client.SimpleClientHttpRequestFactory();
+		factory.setConnectTimeout(10000); // 10 seconds
+		factory.setReadTimeout(30000); // 30 seconds
+		this.restTemplate.setRequestFactory(factory);
+	}
 
 	@Value("${momo.api.url}")
 	private String momoApiUrl;

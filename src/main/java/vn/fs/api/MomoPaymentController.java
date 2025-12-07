@@ -50,25 +50,25 @@ public class MomoPaymentController {
 		this.restTemplate.setRequestFactory(factory);
 	}
 
-	@Value("${momo.api.url}")
+	@Value("${momo.api.url:https://test-payment.momo.vn/v2/gateway/api/create}")
 	private String momoApiUrl;
 
-	@Value("${momo.partner.code}")
+	@Value("${momo.partner.code:MOMO}")
 	private String partnerCode;
 
-	@Value("${momo.access.key}")
+	@Value("${momo.access.key:F8BBA842ECF85}")
 	private String accessKey;
 
-	@Value("${momo.secret.key}")
+	@Value("${momo.secret.key:K951B6PE1waDMi640xX08PD3vg6EKvLz}")
 	private String secretKey;
 
-	@Value("${momo.return.url}")
+	@Value("${momo.return.url:https://nalumosshop-web-production.up.railway.app/checkout}")
 	private String returnUrl;
 
-	@Value("${momo.notify.url}")
+	@Value("${momo.notify.url:https://nalumos-backend-production.up.railway.app/api/payments/momo/notify}")
 	private String notifyUrl;
 
-	@Value("${momo.request.type}")
+	@Value("${momo.request.type:captureMoMoWallet}")
 	private String requestType;
 
 	@PostMapping("/create")

@@ -11,6 +11,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,10 +40,19 @@ public class SendMailApi {
 	@Autowired
 	ObjectMapper objectMapper;
 
-	@PostMapping("/otp")
-	public ResponseEntity<?> sendOpt(@RequestBody Object request) {
+	@PostMapping(value = "/otp", consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.TEXT_PLAIN_VALUE, "application/json", "text/plain", "*/*" }, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> sendOpt(@RequestBody(required = false) Object request) {
 		String email = null;
 		try {
+			LOGGER.info("Received OTP request, type: {}, value: {}", 
+					request != null ? request.getClass().getName() : "null", request);
+			
+			// Handle null request
+			if (request == null) {
+				LOGGER.error("Request body is null");
+				return ResponseEntity.badRequest().body("Email không được để trống");
+			}
+			
 			// Handle both JSON object and plain string
 			if (request instanceof String) {
 				// Plain string - remove quotes if present
@@ -58,7 +68,7 @@ public class SendMailApi {
 					return ResponseEntity.badRequest().body("Email không được tìm thấy trong request");
 				}
 			} else {
-				// Try to parse as JSON string
+				// Try to parse as JSON string or use toString
 				String requestStr = request.toString();
 				if (requestStr.startsWith("{") || requestStr.startsWith("\"")) {
 					try {
@@ -66,8 +76,11 @@ public class SendMailApi {
 						Map<String, Object> map = objectMapper.readValue(requestStr, Map.class);
 						if (map.containsKey("email")) {
 							email = map.get("email").toString().trim();
+						} else {
+							email = requestStr.replaceAll("^\"|\"$", "").trim();
 						}
 					} catch (Exception e) {
+						LOGGER.warn("Failed to parse as JSON, using as string: {}", e.getMessage());
 						email = requestStr.replaceAll("^\"|\"$", "").trim();
 					}
 				} else {

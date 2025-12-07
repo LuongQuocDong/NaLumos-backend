@@ -33,33 +33,33 @@ public class VNPAYPaymentController {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(VNPAYPaymentController.class);
 
-	@Value("${vnpay.tmn.code}")
+	@Value("${vnpay.tmn.code:}")
 	private String tmnCode;
 
-	@Value("${vnpay.hash.secret}")
+	@Value("${vnpay.hash.secret:}")
 	private String hashSecret;
 
-	@Value("${vnpay.url}")
+	@Value("${vnpay.url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
 	private String vnpUrl;
 
-	@Value("${vnpay.return.url}")
+	@Value("${vnpay.return.url:}")
 	private String returnUrl;
 
-	@Value("${vnpay.ipn.url}")
+	@Value("${vnpay.ipn.url:}")
 	private String ipnUrl;
 
 	@PostMapping("/create")
 	public ResponseEntity<?> createPayment(@RequestBody VNPAYPaymentRequest request) {
 		try {
-			LOGGER.info("Received VNPAY payment request: amount={}, orderInfo={}", 
-					request.getAmount(), request.getOrderInfo());
-
 			// Validate request
 			if (request == null) {
 				LOGGER.error("VNPAY payment request is null");
 				return ResponseEntity.badRequest()
 						.body(Collections.singletonMap("message", "Request không được để trống"));
 			}
+
+			LOGGER.info("Received VNPAY payment request: amount={}, orderInfo={}", 
+					request.getAmount(), request.getOrderInfo());
 
 			if (request.getAmount() == null || request.getAmount() <= 0) {
 				LOGGER.error("Invalid amount: {}", request.getAmount());

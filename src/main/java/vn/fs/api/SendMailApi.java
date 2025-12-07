@@ -14,9 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,6 +41,12 @@ public class SendMailApi {
 
 	@Autowired
 	ObjectMapper objectMapper;
+	
+	@org.springframework.beans.factory.annotation.Value("${spring.mail.username}")
+	private String senderEmail;
+	
+	@org.springframework.beans.factory.annotation.Value("${app.mail.sender-name:NaLumos Shop}")
+	private String senderName;
 
 	@PostMapping(value = "/otp", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<?> sendOpt(@RequestBody(required = false) Object request) {
@@ -154,6 +162,43 @@ public class SendMailApi {
 		} catch (Exception e) {
 			LOGGER.error("Failed to send/queue OTP email for: {}", email, e);
 			throw e;
+		}
+	}
+
+	// Test endpoint to check email configuration
+	@GetMapping("/test")
+	public ResponseEntity<?> testEmail(@RequestParam(required = false) String email) {
+		try {
+			LOGGER.info("Testing email configuration...");
+			
+			if (email == null || email.isEmpty()) {
+				email = "test@example.com"; // Default test email
+			}
+			
+			LOGGER.info("Sender email: {}", senderEmail);
+			LOGGER.info("Sender name: {}", senderName);
+			LOGGER.info("Testing email to: {}", email);
+			
+			// Try to send a test email
+			String testBody = "<div style=\"font-family: Arial, sans-serif; padding: 20px;\">"
+					+ "<h2>Test Email from NaLumos Backend</h2>"
+					+ "<p>This is a test email to verify email configuration.</p>"
+					+ "<p>If you receive this, email service is working correctly.</p>"
+					+ "</div>";
+			
+			vn.fs.dto.MailInfo testMail = new vn.fs.dto.MailInfo(email, "Test Email - NaLumos", testBody);
+			
+			try {
+				sendMail.send(testMail);
+				LOGGER.info("Test email sent successfully to: {}", email);
+				return ResponseEntity.ok("Test email sent successfully to: " + email);
+			} catch (Exception e) {
+				LOGGER.error("Failed to send test email: {}", e.getMessage(), e);
+				return ResponseEntity.status(500).body("Failed to send test email: " + e.getMessage() + "\nStack trace: " + e.getClass().getName());
+			}
+		} catch (Exception e) {
+			LOGGER.error("Error in test endpoint: {}", e.getMessage(), e);
+			return ResponseEntity.status(500).body("Error: " + e.getMessage());
 		}
 	}
 
